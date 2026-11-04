@@ -1,0 +1,7 @@
+openai
+rope
+radon
+pytest
+python-dotenv
+GitPython
+tqdm

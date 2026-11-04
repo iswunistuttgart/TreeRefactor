@@ -1,0 +1,154 @@
+import json
+from textwrap import dedent
+
+from llm.llm_types import LLMResponse
+from llm.openai_llm import OpenAILLM
+from refactoring.refactoring import Refactoring
+from refactoring.refactoring_evaluation import RefactoringEvaluation
+from tree_of_thoughts.conventional_commits_specification import (
+    conventional_commits_specification,
+)
+from utility.cli import CLI
+
+
+class RefactoringEvaluator:
+    prompt = dedent("""
+    You are reviewing a Python refactoring.
+    You will receive a unified diff representing a refactoring of existing Python code.
+
+    Your tasks are:
+    1. Determine whether the refactoring preserves behavior.
+        - Compare the behavior implied by the diff before and after.
+        - If there is any functional change, return `"correct": false`.
+        - Otherwise return `"correct": true`.
+
+    2. Evaluate the impact on code readability.
+        Assign an integer grade from -3 to 3.
+
+        Meaning of the scale:
+        -3: Significantly worse
+        -2: Moderately worse
+        -1: Minor degradation
+        0: No meaningful change
+        1: Minor improvement
+        2: Moderate improvement
+        3: Significant improvement
+
+    3. Generate a commit message describing the refactoring.
+        Follow this specification:
+        {conventional_commits_specification}
+
+    Output **only** a valid JSON object with this exact schema:
+    {{
+        "commit_message": "<string>",
+        "correct": <boolean>,
+        "grade": <integer from -3 to 3>
+    }}
+    Do not include explanations, markdown, or additional fields.
+
+    Diff:
+    {diff}  
+    """)
+
+    def __init__(self, llm: OpenAILLM):
+        self.llm = llm
+
+    def evaluate(self, refactoring: Refactoring) -> RefactoringEvaluation | None:
+        """Generate an evaluation for a single refactoring. If the evaluation fails None is returned.
+
+        Args:
+            refactoring (Refactoring): The refactoring to evaluate.
+
+        Returns:
+            RefactoringEvaluation | None: The evaluation of the refactoring.
+        """
+        prompt = RefactoringEvaluator.prompt.format(
+            diff=refactoring.get_diff(),
+            conventional_commits_specification=conventional_commits_specification,
+        )
+        response = self.llm.generate(prompt)
+
+        try:
+            refactoring_evaluation = self.__extract_evaluation(response)
+            return refactoring_evaluation
+        except ValueError as e:
+            CLI.print_error(f"LLM did not return a valid evaluation: {response}")
+            return None
+
+    def batch_evaluate(self, refactorings: list[Refactoring]):
+        """Generate evaluations for multiple refactorings and set them as the evaluation property of the refactoring.
+           If the evaluation fails for a refactoring, its evaluation property is left unchanged.
+
+        Args:
+            refactorings (list[Refactoring]): The list of refactorings to evaluate.
+        """
+        prompts = []
+        for refactoring in refactorings:
+            prompt = RefactoringEvaluator.prompt.format(
+                diff=refactoring.get_diff(),
+                conventional_commits_specification=conventional_commits_specification,
+            )
+            prompts.append(prompt)
+
+        llm_responses = self.llm.batch_generate(prompts)
+
+        for refactoring, response in zip(refactorings, llm_responses):
+            try:
+                refactoring_evaluation = self.__extract_evaluation(response)
+                refactoring.evaluation = refactoring_evaluation
+            except ValueError as e:
+                CLI.print_error(f"LLM did not return a valid evaluation: {response}")
+
+    def __extract_json(self, llm_response: LLMResponse) -> dict:
+        """Extract the JSON object from the LLM response.
+
+        Args:
+            llm_response (LLMResponse): The response from the LLM containing the JSON object.
+
+        Raises:
+            ValueError: If the LLM response does not contain text.
+            ValueError: If the LLM response is not a valid JSON object.
+
+        Returns:
+            dict: The extracted JSON object.
+        """
+        if llm_response.text is None:
+            raise ValueError("LLM response does not contain text content.")
+
+        if "```json" in llm_response.text:
+            json_start = llm_response.text.index("```json") + len("```json")
+            json_end = llm_response.text.index("```", json_start)
+            json_str = llm_response.text[json_start:json_end].strip()
+        else:
+            json_str = llm_response.text.strip()
+
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"LLM response is not a valid JSON object. Error: {e}")
+
+    def __extract_evaluation(self, llm_response: LLMResponse) -> RefactoringEvaluation:
+        """Extract an evaluation from the LLM response.
+
+        Args:
+            llm_response (LLMResponse): The response from the LLM containing the evaluation in JSON format.
+
+        Raises:
+            ValueError: If the LLM response does not contain text.
+            ValueError: If the LLM response is not a valid JSON object.
+            ValueError: If the LLM response JSON object is missing required fields.
+            ValueError: If the grade is outside the range -3 to 3.
+
+        Returns:
+            RefactoringEvaluation: The extracted evaluation.
+        """
+        data = self.__extract_json(llm_response)
+
+        if not all(key in data for key in ["commit_message", "correct", "grade"]):
+            raise ValueError(
+                "LLM response JSON object is missing required fields.")
+        return RefactoringEvaluation(
+            description=data["commit_message"],
+            correct=data["correct"],
+            grade=data["grade"]
+        )

@@ -1,0 +1,35 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and logs
+.cache/
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+
+# Rope project files
+.ropeproject/
+
+# TreeRefactor run artifacts
+refactoring_state.json
+
+# Environment variables
+.env

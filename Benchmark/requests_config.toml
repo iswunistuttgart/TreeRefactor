@@ -1,0 +1,13 @@
+target_file_paths = ["requests/requests-2.34.2/src/requests/utils.py"]
+git_repo_path = "requests"
+branch_name = "refactor/requests_utils"
+pyenv_name = "requests"
+test_file_path = "requests/requests-2.34.2/tests/test_utils.py"
+max_iterations = 150
+statistics_directory = "requests"
+show_tree = true
+refactoring_state_path = "refactoring_state.json"
+seed = 42
+temperature = 0.0
+refactoring_idea_count = 3
+category_attempt_count = 5 

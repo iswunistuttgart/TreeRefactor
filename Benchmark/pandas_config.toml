@@ -1,0 +1,14 @@
+root_path = "~/.pyenv/versions/3.14.3/envs/matplotlib-pandas/lib/python3.14/site-packages/pandas/"
+target_file_paths = ["core/indexes/multi.py"]
+git_repo_path = ""
+branch_name = "refactor/pandas_multi"
+pyenv_name = "matplotlib-pandas"
+test_file_path = "tests/indexes/multi/test_sorting.py"
+max_iterations = 200 
+statistics_directory = ""
+show_tree = true
+refactoring_state_path = "refactoring_state.json"
+seed = 42
+temperature = 0.0
+refactoring_idea_count = 3
+category_attempt_count = 8 

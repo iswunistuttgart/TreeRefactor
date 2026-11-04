@@ -1,0 +1,14 @@
+root_path = "~/.pyenv/versions/3.10.16/envs/pytorch/lib/python3.10/site-packages/torch"
+target_file_paths = ["fx/passes/pass_manager.py"]
+git_repo_path = ""
+branch_name = "refactor/pytorch_pass_manager"
+pyenv_name = "pytorch"
+test_file_path = "fx/passes/tests/test_pass_manager.py"
+max_iterations = 150 
+statistics_directory = ""
+show_tree = true
+refactoring_state_path = "refactoring_state.json"
+seed = 42
+temperature = 0.0
+refactoring_idea_count = 3
+category_attempt_count = 5 
